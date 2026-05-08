@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Button from '../components/Button'
 import { Profile } from '@renderer/lib/profile'
-import { importCurrentSavestates } from '@renderer/lib/profile_management'
+import { readCurrentSavestates, saveProfile } from '@renderer/lib/profile_management'
 
 type ImportSavestatesProps = {
   onBack: () => void
@@ -31,7 +31,7 @@ function ImportSavestates({ onBack }: ImportSavestatesProps): React.JSX.Element 
     setError(null)
     setImported(null)
     try {
-      const profile = await importCurrentSavestates(profileName)
+      const profile = await readCurrentSavestates(profileName)
       setImported(profile)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -44,8 +44,18 @@ function ImportSavestates({ onBack }: ImportSavestatesProps): React.JSX.Element 
     // TODO: implement importing savestates from a selected folder
   }
 
-  function handleSaveProfile(): void {
-    // TODO: persist the imported profile (or finalize it after review)
+  async function handleSaveProfile(): Promise<void> {
+    if (!imported) return
+    setBusy(true)
+    setError(null)
+    try {
+      await saveProfile({ name: profileName, savestates: imported.savestates })
+      onBack()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
   }
 
   const totalSavestates = imported
@@ -73,7 +83,10 @@ function ImportSavestates({ onBack }: ImportSavestatesProps): React.JSX.Element 
         <Button onClick={handleImportFromFolder} disabled={busy || !isValidProfileName(profileName)}>
           Import from Folder
         </Button>
-        <Button onClick={handleSaveProfile} disabled={!imported || busy}>
+        <Button
+          onClick={handleSaveProfile}
+          disabled={!imported || busy || !isValidProfileName(profileName)}
+        >
           Save Profile
         </Button>
       </div>

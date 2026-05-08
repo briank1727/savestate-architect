@@ -1,10 +1,16 @@
-import { app, dialog, ipcMain } from 'electron'
+import { app, dialog, ipcMain, shell } from 'electron'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 
 export type Profile = {
   name: string
   savestates: object[][]
+}
+
+export type ProfileSummary = {
+  name: string
+  numFolders: number
+  numSavestates: number
 }
 
 const SAVESTATE_FILE_RE = /^savestate(\d+)\.json$/i
@@ -153,6 +159,67 @@ async function loadProfile(name: string): Promise<Profile> {
   }
 }
 
+async function summarizeProfileDir(rootPath: string): Promise<{
+  numFolders: number
+  numSavestates: number
+}> {
+  let entries: import('fs').Dirent[]
+  try {
+    entries = await fs.readdir(rootPath, { withFileTypes: true })
+  } catch (err) {
+    console.error(`${LOG} summarizeProfileDir readdir failed for "${rootPath}":`, err)
+    throw err
+  }
+
+  const numberedFolders = entries.filter((e) => e.isDirectory() && /^\d+$/.test(e.name))
+
+  if (numberedFolders.length > 0) {
+    let numSavestates = 0
+    for (const folder of numberedFolders) {
+      const folderEntries = await fs.readdir(join(rootPath, folder.name), { withFileTypes: true })
+      numSavestates += folderEntries.filter((e) => e.isFile() && SAVESTATE_FILE_RE.test(e.name))
+        .length
+    }
+    return { numFolders: numberedFolders.length, numSavestates }
+  }
+
+  const flatJson = entries.filter(
+    (e) => e.isFile() && e.name.toLowerCase().endsWith('.json')
+  ).length
+  if (flatJson === 0) return { numFolders: 0, numSavestates: 0 }
+  return { numFolders: 1, numSavestates: flatJson }
+}
+
+async function loadProfileSummaries(): Promise<ProfileSummary[]> {
+  const root = getProfilesRoot()
+  console.log(`${LOG} loadProfileSummaries reading root: ${root}`)
+  let entries: import('fs').Dirent[]
+  try {
+    entries = await fs.readdir(root, { withFileTypes: true })
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.log(`${LOG} loadProfileSummaries: root does not exist yet, returning []`)
+      return []
+    }
+    console.error(`${LOG} loadProfileSummaries error:`, err)
+    throw err
+  }
+
+  const profileDirs = entries.filter((e) => e.isDirectory())
+  console.log(
+    `${LOG} loadProfileSummaries found ${profileDirs.length} profile dirs:`,
+    profileDirs.map((d) => d.name)
+  )
+
+  const summaries: ProfileSummary[] = []
+  for (const entry of profileDirs) {
+    const { numFolders, numSavestates } = await summarizeProfileDir(getProfileDir(entry.name))
+    summaries.push({ name: entry.name, numFolders, numSavestates })
+  }
+  console.log(`${LOG} loadProfileSummaries returning ${summaries.length} summaries`)
+  return summaries
+}
+
 async function loadProfiles(): Promise<Profile[]> {
   const root = getProfilesRoot()
   console.log(`${LOG} loadProfiles reading root: ${root}`)
@@ -185,7 +252,18 @@ async function saveProfile(profile: Profile): Promise<void> {
   console.log(
     `${LOG} saveProfile structure: ${profile.savestates.length} folders, sizes=[${profile.savestates.map((f) => f.length).join(', ')}]`
   )
-  await fs.rm(dir, { recursive: true, force: true })
+
+  let exists = true
+  try {
+    await fs.access(dir)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') exists = false
+    else throw err
+  }
+  if (exists) {
+    throw new Error(`A profile named "${profile.name}" already exists.`)
+  }
+
   await fs.mkdir(dir, { recursive: true })
 
   for (let folderIdx = 0; folderIdx < profile.savestates.length; folderIdx++) {
@@ -212,27 +290,31 @@ async function pickFolder(): Promise<string | null> {
   return result.filePaths[0]
 }
 
-async function importFromFolder(profileName: string, folderPath: string): Promise<Profile> {
-  console.log(`${LOG} importFromFolder("${profileName}", "${folderPath}")`)
+async function readSavestatesFromFolder(
+  profileName: string,
+  folderPath: string
+): Promise<Profile> {
+  console.log(`${LOG} readSavestatesFromFolder("${profileName}", "${folderPath}")`)
   const savestates = await readSavestatesFromSource(folderPath)
-  const profile: Profile = {
-    name: profileName,
-    savestates
-  }
-  await saveProfile(profile)
-  return loadProfile(profileName)
+  return { name: profileName, savestates }
 }
 
-async function importCurrent(profileName: string): Promise<Profile> {
+async function readCurrentSavestates(profileName: string): Promise<Profile> {
   const sourceDir = getDefaultSilksongSaveDir()
-  console.log(`${LOG} importCurrent("${profileName}") source: ${sourceDir}`)
+  console.log(`${LOG} readCurrentSavestates("${profileName}") source: ${sourceDir}`)
   const savestates = await readSavestatesFromSource(sourceDir)
-  const profile: Profile = {
-    name: profileName,
-    savestates
+  return { name: profileName, savestates }
+}
+
+async function openProfileFolder(profileName: string): Promise<void> {
+  console.log(`${LOG} openProfileFolder("${profileName}")`)
+  validateProfileName(profileName)
+  const dir = getProfileDir(profileName)
+  const errMsg = await shell.openPath(dir)
+  if (errMsg) {
+    console.error(`${LOG} openProfileFolder failed: ${errMsg}`)
+    throw new Error(errMsg)
   }
-  await saveProfile(profile)
-  return loadProfile(profileName)
 }
 
 async function deleteProfile(profileName: string): Promise<void> {
@@ -244,10 +326,13 @@ async function deleteProfile(profileName: string): Promise<void> {
 export function registerProfileIpc(): void {
   console.log(`${LOG} registering IPC handlers`)
   ipcMain.handle('profiles:list', () => loadProfiles())
+  ipcMain.handle('profiles:list-summaries', () => loadProfileSummaries())
   ipcMain.handle('profiles:pick-folder', () => pickFolder())
-  ipcMain.handle('profiles:import-from-folder', (_e, name: string, folderPath: string) =>
-    importFromFolder(name, folderPath)
+  ipcMain.handle('profiles:read-from-folder', (_e, name: string, folderPath: string) =>
+    readSavestatesFromFolder(name, folderPath)
   )
-  ipcMain.handle('profiles:import-current', (_e, name: string) => importCurrent(name))
+  ipcMain.handle('profiles:read-current', (_e, name: string) => readCurrentSavestates(name))
+  ipcMain.handle('profiles:save', (_e, profile: Profile) => saveProfile(profile))
   ipcMain.handle('profiles:delete', (_e, name: string) => deleteProfile(name))
+  ipcMain.handle('profiles:open-folder', (_e, name: string) => openProfileFolder(name))
 }

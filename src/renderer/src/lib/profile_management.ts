@@ -1,4 +1,4 @@
-import { Profile } from './profile'
+import { Profile, ProfileSummary } from './profile'
 
 const LOG = '[profile_management]'
 
@@ -18,6 +18,22 @@ export async function listProfiles(): Promise<Profile[]> {
   }
 }
 
+export async function listProfileSummaries(): Promise<ProfileSummary[]> {
+  console.log(`${LOG} listProfileSummaries() called`)
+  if (!window.api?.profiles) {
+    console.error(`${LOG} window.api.profiles is undefined — preload bridge not loaded`)
+    throw new Error('Preload bridge missing — window.api.profiles is undefined')
+  }
+  try {
+    const result = (await window.api.profiles.listSummaries()) as ProfileSummary[]
+    console.log(`${LOG} listProfileSummaries returning ${result.length} summaries`)
+    return result
+  } catch (err) {
+    console.error(`${LOG} listProfileSummaries error:`, err)
+    throw err
+  }
+}
+
 export async function pickFolder(): Promise<string | null> {
   console.log(`${LOG} pickFolder() called`)
   try {
@@ -30,40 +46,65 @@ export async function pickFolder(): Promise<string | null> {
   }
 }
 
-export async function importFromFolder(profileName: string): Promise<Profile | null> {
-  console.log(`${LOG} importFromFolder("${profileName}") called`)
+export async function readSavestatesFromFolder(profileName: string): Promise<Profile | null> {
+  console.log(`${LOG} readSavestatesFromFolder("${profileName}") called`)
   const folderPath = await pickFolder()
   if (!folderPath) {
-    console.log(`${LOG} importFromFolder cancelled (no folder picked)`)
+    console.log(`${LOG} readSavestatesFromFolder cancelled (no folder picked)`)
     return null
   }
   try {
-    const profile = (await window.api.profiles.importFromFolder(
-      profileName,
-      folderPath
-    )) as Profile
-    console.log(`${LOG} importFromFolder returning profile:`, profile)
+    const profile = (await window.api.profiles.readFromFolder(profileName, folderPath)) as Profile
+    console.log(`${LOG} readSavestatesFromFolder returning profile:`, profile)
     return profile
   } catch (err) {
-    console.error(`${LOG} importFromFolder error:`, err)
+    console.error(`${LOG} readSavestatesFromFolder error:`, err)
     throw err
   }
 }
 
-export async function importCurrentSavestates(profileName: string): Promise<Profile> {
-  console.log(`${LOG} importCurrentSavestates("${profileName}") called`)
+export async function readCurrentSavestates(profileName: string): Promise<Profile> {
+  console.log(`${LOG} readCurrentSavestates("${profileName}") called`)
   if (!window.api?.profiles) {
     console.error(`${LOG} window.api.profiles is undefined — preload bridge not loaded`)
     throw new Error('Preload bridge missing — window.api.profiles is undefined')
   }
   try {
-    const profile = (await window.api.profiles.importCurrent(profileName)) as Profile
+    const profile = (await window.api.profiles.readCurrent(profileName)) as Profile
     console.log(
-      `${LOG} importCurrentSavestates returning profile: name="${profile.name}", folders=${profile.savestates.length}, total savestates=${profile.savestates.reduce((s, f) => s + f.length, 0)}`
+      `${LOG} readCurrentSavestates returning profile: name="${profile.name}", folders=${profile.savestates.length}, total savestates=${profile.savestates.reduce((s, f) => s + f.length, 0)}`
     )
     return profile
   } catch (err) {
-    console.error(`${LOG} importCurrentSavestates error:`, err)
+    console.error(`${LOG} readCurrentSavestates error:`, err)
+    throw err
+  }
+}
+
+export async function saveProfile(profile: Profile): Promise<void> {
+  console.log(
+    `${LOG} saveProfile("${profile.name}") called — folders=${profile.savestates.length}, total savestates=${profile.savestates.reduce((s, f) => s + f.length, 0)}`
+  )
+  if (!window.api?.profiles) {
+    console.error(`${LOG} window.api.profiles is undefined — preload bridge not loaded`)
+    throw new Error('Preload bridge missing — window.api.profiles is undefined')
+  }
+  try {
+    await window.api.profiles.save(profile)
+    console.log(`${LOG} saveProfile done`)
+  } catch (err) {
+    console.error(`${LOG} saveProfile error:`, err)
+    throw err
+  }
+}
+
+export async function openProfileFolder(profileName: string): Promise<void> {
+  console.log(`${LOG} openProfileFolder("${profileName}") called`)
+  try {
+    await window.api.profiles.openFolder(profileName)
+    console.log(`${LOG} openProfileFolder done`)
+  } catch (err) {
+    console.error(`${LOG} openProfileFolder error:`, err)
     throw err
   }
 }

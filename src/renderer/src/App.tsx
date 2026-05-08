@@ -46,7 +46,9 @@ function App(): React.JSX.Element {
         })}
       </nav>
       <main className="flex-1 p-6 overflow-auto" role="tabpanel" aria-label={activeTab}>
-        {activeTab === 'Profiles' && <Profiles />}
+        <div hidden={activeTab !== 'Profiles'}>
+          <Profiles />
+        </div>
       </main>
     </div>
   )
