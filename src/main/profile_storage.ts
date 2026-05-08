@@ -4,7 +4,6 @@ import { join } from 'path'
 
 export type Profile = {
   name: string
-  date_created: Date
   savestates: object[][]
 }
 
@@ -150,7 +149,6 @@ async function loadProfile(name: string): Promise<Profile> {
   )
   return {
     name,
-    date_created: stat.birthtime,
     savestates
   }
 }
@@ -219,7 +217,6 @@ async function importFromFolder(profileName: string, folderPath: string): Promis
   const savestates = await readSavestatesFromSource(folderPath)
   const profile: Profile = {
     name: profileName,
-    date_created: new Date(),
     savestates
   }
   await saveProfile(profile)
@@ -232,7 +229,6 @@ async function importCurrent(profileName: string): Promise<Profile> {
   const savestates = await readSavestatesFromSource(sourceDir)
   const profile: Profile = {
     name: profileName,
-    date_created: new Date(),
     savestates
   }
   await saveProfile(profile)

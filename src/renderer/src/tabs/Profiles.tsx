@@ -1,7 +1,7 @@
 import { Profile } from '@renderer/lib/profile'
 import Button from '../components/Button'
 import ImportSavestates from '../views/ImportSavestates'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 type View = 'list' | 'import'
 
@@ -9,46 +9,9 @@ function countSavestates(savestates: object[][]): number {
   return savestates.reduce((total, folder) => total + folder.length, 0)
 }
 
-function formatDate(date: Date): string {
-  return new Date(date).toLocaleString()
-}
-
 function Profiles(): React.JSX.Element {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [view, setView] = useState<View>('list')
-
-  useEffect(() => {
-    const dummyProfiles: Profile[] = [
-      {
-        name: 'Any%',
-        date_created: new Date('2026-01-12T14:32:00'),
-        savestates: [
-          [{}, {}, {}, {}],
-          [{}, {}],
-          [{}, {}, {}, {}, {}, {}]
-        ]
-      },
-      {
-        name: 'All Bosses',
-        date_created: new Date('2026-02-28T09:15:00'),
-        savestates: [
-          [{}, {}, {}],
-          [{}, {}, {}, {}, {}]
-        ]
-      },
-      {
-        name: '112%',
-        date_created: new Date('2026-04-03T18:47:00'),
-        savestates: [[{}, {}], [{}], [{}, {}, {}], [{}, {}, {}, {}], [{}, {}]]
-      },
-      {
-        name: 'Practice',
-        date_created: new Date('2026-05-01T11:00:00'),
-        savestates: [[]]
-      }
-    ]
-    setProfiles(dummyProfiles)
-  }, [])
 
   const cellClass = 'px-3.5 py-2.5 text-left border-b border-[var(--ev-c-gray-1)]'
   const headerCellClass =
@@ -69,7 +32,6 @@ function Profiles(): React.JSX.Element {
           <tr>
             <th className={headerCellClass}>Name</th>
             <th className={headerCellClass}>Savestates</th>
-            <th className={headerCellClass}>Date Created</th>
           </tr>
         </thead>
         <tbody>
@@ -91,7 +53,6 @@ function Profiles(): React.JSX.Element {
                   <td className={rowCellClass}>
                     {countSavestates(profile.savestates)} ({profile.savestates.length} folders)
                   </td>
-                  <td className={rowCellClass}>{formatDate(profile.date_created)}</td>
                 </tr>
               )
             })

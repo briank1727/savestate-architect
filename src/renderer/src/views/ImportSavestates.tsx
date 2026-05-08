@@ -7,6 +7,19 @@ type ImportSavestatesProps = {
   onBack: () => void
 }
 
+const ILLEGAL_FOLDER_CHARS_RE = /[\\/:*?"<>|]/g
+
+function sanitizeProfileName(input: string): string {
+  return input.replace(ILLEGAL_FOLDER_CHARS_RE, '')
+}
+
+function isValidProfileName(name: string): boolean {
+  const trimmed = name.trim()
+  if (!trimmed) return false
+  if (trimmed === '.' || trimmed === '..') return false
+  return true
+}
+
 function ImportSavestates({ onBack }: ImportSavestatesProps): React.JSX.Element {
   const [profileName, setProfileName] = useState('Test Profile')
   const [imported, setImported] = useState<Profile | null>(null)
@@ -31,6 +44,10 @@ function ImportSavestates({ onBack }: ImportSavestatesProps): React.JSX.Element 
     // TODO: implement importing savestates from a selected folder
   }
 
+  function handleSaveProfile(): void {
+    // TODO: persist the imported profile (or finalize it after review)
+  }
+
   const totalSavestates = imported
     ? imported.savestates.reduce((acc, folder) => acc + folder.length, 0)
     : 0
@@ -45,15 +62,19 @@ function ImportSavestates({ onBack }: ImportSavestatesProps): React.JSX.Element 
         <input
           className="px-3 py-2 rounded-md bg-[var(--color-background-mute)] border border-[var(--ev-c-gray-1)] text-[var(--ev-c-text-1)] text-sm outline-none focus:border-[var(--ev-c-text-2)]"
           value={profileName}
-          onChange={(e) => setProfileName(e.target.value)}
+          maxLength={100}
+          onChange={(e) => setProfileName(sanitizeProfileName(e.target.value))}
         />
       </div>
       <div className="flex gap-3">
-        <Button onClick={handleImportCurrent} disabled={busy || !profileName.trim()}>
+        <Button onClick={handleImportCurrent} disabled={busy || !isValidProfileName(profileName)}>
           {busy ? 'Importing…' : 'Import Current Savestates'}
         </Button>
-        <Button onClick={handleImportFromFolder} disabled={busy}>
+        <Button onClick={handleImportFromFolder} disabled={busy || !isValidProfileName(profileName)}>
           Import from Folder
+        </Button>
+        <Button onClick={handleSaveProfile} disabled={!imported || busy}>
+          Save Profile
         </Button>
       </div>
 
@@ -64,29 +85,16 @@ function ImportSavestates({ onBack }: ImportSavestatesProps): React.JSX.Element 
       )}
 
       {imported && (
-        <div className="flex flex-col gap-2 px-4 py-3 rounded-md bg-[var(--color-background-soft)] border border-[var(--ev-c-gray-1)] text-sm">
-          <div className="text-[var(--ev-c-text-2)] uppercase text-xs tracking-[0.04em] font-semibold">
-            Imported profile
+        <div className="flex flex-col gap-1 px-4 py-3 rounded-md bg-[var(--color-background-soft)] border border-green-500/40 text-sm">
+          <div className="font-semibold text-green-300">Import Success</div>
+          <div>
+            <span className="text-[var(--ev-c-text-2)]">Folders:</span>{' '}
+            {imported.savestates.length}
           </div>
           <div>
-            <span className="text-[var(--ev-c-text-2)]">Name:</span>{' '}
-            <span className="font-semibold">{imported.name}</span>
+            <span className="text-[var(--ev-c-text-2)]">Total savestates:</span>{' '}
+            {totalSavestates}
           </div>
-          <div>
-            <span className="text-[var(--ev-c-text-2)]">Date created:</span>{' '}
-            {imported.date_created.toLocaleString()}
-          </div>
-          <div>
-            <span className="text-[var(--ev-c-text-2)]">Folders:</span> {imported.savestates.length}
-          </div>
-          <div>
-            <span className="text-[var(--ev-c-text-2)]">Total savestates:</span> {totalSavestates}
-          </div>
-          <details className="mt-2">
-            <summary className="cursor-pointer text-[var(--ev-c-text-2)] hover:text-[var(--ev-c-text-1)]">
-              Raw JSON
-            </summary>
-          </details>
         </div>
       )}
     </div>

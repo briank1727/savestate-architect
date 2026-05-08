@@ -2,12 +2,6 @@ import { Profile } from './profile'
 
 const LOG = '[profile_management]'
 
-type StoredProfile = Omit<Profile, 'date_created'> & { date_created: string | Date }
-
-function reviveProfile(p: StoredProfile): Profile {
-  return { ...p, date_created: new Date(p.date_created) }
-}
-
 export async function listProfiles(): Promise<Profile[]> {
   console.log(`${LOG} listProfiles() called`)
   if (!window.api?.profiles) {
@@ -15,9 +9,7 @@ export async function listProfiles(): Promise<Profile[]> {
     throw new Error('Preload bridge missing — window.api.profiles is undefined')
   }
   try {
-    const stored = (await window.api.profiles.list()) as StoredProfile[]
-    console.log(`${LOG} listProfiles raw IPC result:`, stored)
-    const result = stored.map(reviveProfile)
+    const result = (await window.api.profiles.list()) as Profile[]
     console.log(`${LOG} listProfiles returning ${result.length} profiles`)
     return result
   } catch (err) {
@@ -46,12 +38,10 @@ export async function importFromFolder(profileName: string): Promise<Profile | n
     return null
   }
   try {
-    const stored = (await window.api.profiles.importFromFolder(
+    const profile = (await window.api.profiles.importFromFolder(
       profileName,
       folderPath
-    )) as StoredProfile
-    console.log(`${LOG} importFromFolder raw IPC result:`, stored)
-    const profile = reviveProfile(stored)
+    )) as Profile
     console.log(`${LOG} importFromFolder returning profile:`, profile)
     return profile
   } catch (err) {
@@ -67,9 +57,7 @@ export async function importCurrentSavestates(profileName: string): Promise<Prof
     throw new Error('Preload bridge missing — window.api.profiles is undefined')
   }
   try {
-    const stored = (await window.api.profiles.importCurrent(profileName)) as StoredProfile
-    console.log(`${LOG} importCurrentSavestates raw IPC result:`, stored)
-    const profile = reviveProfile(stored)
+    const profile = (await window.api.profiles.importCurrent(profileName)) as Profile
     console.log(
       `${LOG} importCurrentSavestates returning profile: name="${profile.name}", folders=${profile.savestates.length}, total savestates=${profile.savestates.reduce((s, f) => s + f.length, 0)}`
     )
