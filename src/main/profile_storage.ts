@@ -252,7 +252,18 @@ async function saveProfile(profile: Profile): Promise<void> {
   console.log(
     `${LOG} saveProfile structure: ${profile.savestates.length} folders, sizes=[${profile.savestates.map((f) => f.length).join(', ')}]`
   )
-  await fs.rm(dir, { recursive: true, force: true })
+
+  let exists = true
+  try {
+    await fs.access(dir)
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') exists = false
+    else throw err
+  }
+  if (exists) {
+    throw new Error(`A profile named "${profile.name}" already exists.`)
+  }
+
   await fs.mkdir(dir, { recursive: true })
 
   for (let folderIdx = 0; folderIdx < profile.savestates.length; folderIdx++) {
@@ -279,27 +290,20 @@ async function pickFolder(): Promise<string | null> {
   return result.filePaths[0]
 }
 
-async function importFromFolder(profileName: string, folderPath: string): Promise<Profile> {
-  console.log(`${LOG} importFromFolder("${profileName}", "${folderPath}")`)
+async function readSavestatesFromFolder(
+  profileName: string,
+  folderPath: string
+): Promise<Profile> {
+  console.log(`${LOG} readSavestatesFromFolder("${profileName}", "${folderPath}")`)
   const savestates = await readSavestatesFromSource(folderPath)
-  const profile: Profile = {
-    name: profileName,
-    savestates
-  }
-  await saveProfile(profile)
-  return loadProfile(profileName)
+  return { name: profileName, savestates }
 }
 
-async function importCurrent(profileName: string): Promise<Profile> {
+async function readCurrentSavestates(profileName: string): Promise<Profile> {
   const sourceDir = getDefaultSilksongSaveDir()
-  console.log(`${LOG} importCurrent("${profileName}") source: ${sourceDir}`)
+  console.log(`${LOG} readCurrentSavestates("${profileName}") source: ${sourceDir}`)
   const savestates = await readSavestatesFromSource(sourceDir)
-  const profile: Profile = {
-    name: profileName,
-    savestates
-  }
-  await saveProfile(profile)
-  return loadProfile(profileName)
+  return { name: profileName, savestates }
 }
 
 async function openProfileFolder(profileName: string): Promise<void> {
@@ -324,10 +328,11 @@ export function registerProfileIpc(): void {
   ipcMain.handle('profiles:list', () => loadProfiles())
   ipcMain.handle('profiles:list-summaries', () => loadProfileSummaries())
   ipcMain.handle('profiles:pick-folder', () => pickFolder())
-  ipcMain.handle('profiles:import-from-folder', (_e, name: string, folderPath: string) =>
-    importFromFolder(name, folderPath)
+  ipcMain.handle('profiles:read-from-folder', (_e, name: string, folderPath: string) =>
+    readSavestatesFromFolder(name, folderPath)
   )
-  ipcMain.handle('profiles:import-current', (_e, name: string) => importCurrent(name))
+  ipcMain.handle('profiles:read-current', (_e, name: string) => readCurrentSavestates(name))
+  ipcMain.handle('profiles:save', (_e, profile: Profile) => saveProfile(profile))
   ipcMain.handle('profiles:delete', (_e, name: string) => deleteProfile(name))
   ipcMain.handle('profiles:open-folder', (_e, name: string) => openProfileFolder(name))
 }

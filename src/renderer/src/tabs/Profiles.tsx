@@ -1,5 +1,9 @@
 import { ProfileSummary } from '@renderer/lib/profile'
-import { listProfileSummaries, openProfileFolder } from '@renderer/lib/profile_management'
+import {
+  deleteProfile,
+  listProfileSummaries,
+  openProfileFolder
+} from '@renderer/lib/profile_management'
 import Button from '../components/Button'
 import ImportSavestates from '../views/ImportSavestates'
 import { useEffect, useState } from 'react'
@@ -73,15 +77,37 @@ function Profiles(): React.JSX.Element {
                   <td className={rowCellClass}>{summary.numFolders}</td>
                   <td className={rowCellClass}>{summary.numSavestates}</td>
                   <td className={rowCellClass}>
-                    <Button
-                      onClick={() => {
-                        openProfileFolder(summary.name).catch((err) =>
-                          setError(err instanceof Error ? err.message : String(err))
-                        )
-                      }}
-                    >
-                      Open Folder
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          openProfileFolder(summary.name).catch((err) =>
+                            setError(err instanceof Error ? err.message : String(err))
+                          )
+                        }}
+                      >
+                        Open Folder
+                      </Button>
+                      <Button
+                        className="bg-red-600! hover:bg-red-700!"
+                        onClick={() => {
+                          if (
+                            !window.confirm(
+                              `Delete profile "${summary.name}"? This cannot be undone.`
+                            )
+                          ) {
+                            return
+                          }
+                          deleteProfile(summary.name)
+                            .then(() => listProfileSummaries())
+                            .then((result) => setSummaries(result))
+                            .catch((err) =>
+                              setError(err instanceof Error ? err.message : String(err))
+                            )
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               )
