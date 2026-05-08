@@ -1,4 +1,4 @@
-import { Profile } from './profile'
+import { Profile, ProfileSummary } from './profile'
 
 const LOG = '[profile_management]'
 
@@ -14,6 +14,22 @@ export async function listProfiles(): Promise<Profile[]> {
     return result
   } catch (err) {
     console.error(`${LOG} listProfiles error:`, err)
+    throw err
+  }
+}
+
+export async function listProfileSummaries(): Promise<ProfileSummary[]> {
+  console.log(`${LOG} listProfileSummaries() called`)
+  if (!window.api?.profiles) {
+    console.error(`${LOG} window.api.profiles is undefined — preload bridge not loaded`)
+    throw new Error('Preload bridge missing — window.api.profiles is undefined')
+  }
+  try {
+    const result = (await window.api.profiles.listSummaries()) as ProfileSummary[]
+    console.log(`${LOG} listProfileSummaries returning ${result.length} summaries`)
+    return result
+  } catch (err) {
+    console.error(`${LOG} listProfileSummaries error:`, err)
     throw err
   }
 }

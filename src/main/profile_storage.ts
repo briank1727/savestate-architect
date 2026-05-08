@@ -7,6 +7,12 @@ export type Profile = {
   savestates: object[][]
 }
 
+export type ProfileSummary = {
+  name: string
+  numFolders: number
+  numSavestates: number
+}
+
 const SAVESTATE_FILE_RE = /^savestate(\d+)\.json$/i
 const LOG = '[profile_storage]'
 
@@ -153,6 +159,67 @@ async function loadProfile(name: string): Promise<Profile> {
   }
 }
 
+async function summarizeProfileDir(rootPath: string): Promise<{
+  numFolders: number
+  numSavestates: number
+}> {
+  let entries: import('fs').Dirent[]
+  try {
+    entries = await fs.readdir(rootPath, { withFileTypes: true })
+  } catch (err) {
+    console.error(`${LOG} summarizeProfileDir readdir failed for "${rootPath}":`, err)
+    throw err
+  }
+
+  const numberedFolders = entries.filter((e) => e.isDirectory() && /^\d+$/.test(e.name))
+
+  if (numberedFolders.length > 0) {
+    let numSavestates = 0
+    for (const folder of numberedFolders) {
+      const folderEntries = await fs.readdir(join(rootPath, folder.name), { withFileTypes: true })
+      numSavestates += folderEntries.filter((e) => e.isFile() && SAVESTATE_FILE_RE.test(e.name))
+        .length
+    }
+    return { numFolders: numberedFolders.length, numSavestates }
+  }
+
+  const flatJson = entries.filter(
+    (e) => e.isFile() && e.name.toLowerCase().endsWith('.json')
+  ).length
+  if (flatJson === 0) return { numFolders: 0, numSavestates: 0 }
+  return { numFolders: 1, numSavestates: flatJson }
+}
+
+async function loadProfileSummaries(): Promise<ProfileSummary[]> {
+  const root = getProfilesRoot()
+  console.log(`${LOG} loadProfileSummaries reading root: ${root}`)
+  let entries: import('fs').Dirent[]
+  try {
+    entries = await fs.readdir(root, { withFileTypes: true })
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.log(`${LOG} loadProfileSummaries: root does not exist yet, returning []`)
+      return []
+    }
+    console.error(`${LOG} loadProfileSummaries error:`, err)
+    throw err
+  }
+
+  const profileDirs = entries.filter((e) => e.isDirectory())
+  console.log(
+    `${LOG} loadProfileSummaries found ${profileDirs.length} profile dirs:`,
+    profileDirs.map((d) => d.name)
+  )
+
+  const summaries: ProfileSummary[] = []
+  for (const entry of profileDirs) {
+    const { numFolders, numSavestates } = await summarizeProfileDir(getProfileDir(entry.name))
+    summaries.push({ name: entry.name, numFolders, numSavestates })
+  }
+  console.log(`${LOG} loadProfileSummaries returning ${summaries.length} summaries`)
+  return summaries
+}
+
 async function loadProfiles(): Promise<Profile[]> {
   const root = getProfilesRoot()
   console.log(`${LOG} loadProfiles reading root: ${root}`)
@@ -244,6 +311,7 @@ async function deleteProfile(profileName: string): Promise<void> {
 export function registerProfileIpc(): void {
   console.log(`${LOG} registering IPC handlers`)
   ipcMain.handle('profiles:list', () => loadProfiles())
+  ipcMain.handle('profiles:list-summaries', () => loadProfileSummaries())
   ipcMain.handle('profiles:pick-folder', () => pickFolder())
   ipcMain.handle('profiles:import-from-folder', (_e, name: string, folderPath: string) =>
     importFromFolder(name, folderPath)

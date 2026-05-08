@@ -4,6 +4,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   profiles: {
     list: () => ipcRenderer.invoke('profiles:list'),
+    listSummaries: () => ipcRenderer.invoke('profiles:list-summaries'),
     pickFolder: () => ipcRenderer.invoke('profiles:pick-folder'),
     importFromFolder: (name: string, folderPath: string) =>
       ipcRenderer.invoke('profiles:import-from-folder', name, folderPath),
