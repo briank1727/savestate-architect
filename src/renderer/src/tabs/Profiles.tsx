@@ -5,6 +5,7 @@ import {
   openProfileFolder
 } from '@renderer/lib/profile_management'
 import Button from '../components/Button'
+import ConfirmDialog from '../components/ConfirmDialog'
 import ImportSavestates from '../views/ImportSavestates'
 import { useEffect, useState } from 'react'
 
@@ -14,6 +15,7 @@ function Profiles(): React.JSX.Element {
   const [summaries, setSummaries] = useState<ProfileSummary[]>([])
   const [view, setView] = useState<View>('list')
   const [error, setError] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
 
   useEffect(() => {
     if (view !== 'list') return
@@ -89,21 +91,7 @@ function Profiles(): React.JSX.Element {
                       </Button>
                       <Button
                         className="bg-red-600! hover:bg-red-700!"
-                        onClick={() => {
-                          if (
-                            !window.confirm(
-                              `Delete profile "${summary.name}"? This cannot be undone.`
-                            )
-                          ) {
-                            return
-                          }
-                          deleteProfile(summary.name)
-                            .then(() => listProfileSummaries())
-                            .then((result) => setSummaries(result))
-                            .catch((err) =>
-                              setError(err instanceof Error ? err.message : String(err))
-                            )
-                        }}
+                        onClick={() => setPendingDelete(summary.name)}
                       >
                         Delete
                       </Button>
@@ -115,6 +103,23 @@ function Profiles(): React.JSX.Element {
           )}
         </tbody>
       </table>
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete profile"
+          message={`Delete profile "${pendingDelete}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          destructive
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            const name = pendingDelete
+            setPendingDelete(null)
+            deleteProfile(name)
+              .then(() => listProfileSummaries())
+              .then((result) => setSummaries(result))
+              .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+          }}
+        />
+      )}
     </div>
   )
 }
