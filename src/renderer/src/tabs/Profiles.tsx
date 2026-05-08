@@ -1,6 +1,9 @@
 import { Profile } from '@renderer/lib/profile'
 import Button from '../components/Button'
+import ImportSavestates from '../views/ImportSavestates'
 import { useEffect, useState } from 'react'
+
+type View = 'list' | 'import'
 
 function countSavestates(savestates: object[][]): number {
   return savestates.reduce((total, folder) => total + folder.length, 0)
@@ -12,6 +15,7 @@ function formatDate(date: Date): string {
 
 function Profiles(): React.JSX.Element {
   const [profiles, setProfiles] = useState<Profile[]>([])
+  const [view, setView] = useState<View>('list')
 
   useEffect(() => {
     const dummyProfiles: Profile[] = [
@@ -51,10 +55,14 @@ function Profiles(): React.JSX.Element {
     cellClass +
     ' bg-[var(--color-background-mute)] text-[var(--ev-c-text-2)] font-semibold text-xs uppercase tracking-[0.04em]'
 
+  if (view === 'import') {
+    return <ImportSavestates onBack={() => setView('list')} />
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-start">
-        <Button>Add Profile</Button>
+        <Button onClick={() => setView('import')}>+ Add Profile</Button>
       </div>
       <table className="w-full border-collapse bg-[var(--color-background-soft)] border border-[var(--ev-c-gray-1)] rounded-lg overflow-hidden text-sm">
         <thead>
