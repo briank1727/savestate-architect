@@ -77,12 +77,10 @@ function ImportSavestates({ onBack }: ImportSavestatesProps): React.JSX.Element 
         />
       </div>
       <div className="flex gap-3">
-        <Button onClick={handleImportCurrent} disabled={busy || !isValidProfileName(profileName)}>
+        <Button onClick={handleImportCurrent}>
           {busy ? 'Importing…' : 'Import Current Savestates'}
         </Button>
-        <Button onClick={handleImportFromFolder} disabled={busy || !isValidProfileName(profileName)}>
-          Import from Folder
-        </Button>
+        <Button onClick={handleImportFromFolder}>Import from Folder</Button>
         <Button
           onClick={handleSaveProfile}
           disabled={!imported || busy || !isValidProfileName(profileName)}
