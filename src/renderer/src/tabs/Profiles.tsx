@@ -17,7 +17,6 @@ function Profiles(): React.JSX.Element {
     const dummyProfiles: Profile[] = [
       {
         name: 'Any%',
-        num_folders: 3,
         date_created: new Date('2026-01-12T14:32:00'),
         savestates: [
           [{}, {}, {}, {}],
@@ -27,7 +26,6 @@ function Profiles(): React.JSX.Element {
       },
       {
         name: 'All Bosses',
-        num_folders: 2,
         date_created: new Date('2026-02-28T09:15:00'),
         savestates: [
           [{}, {}, {}],
@@ -36,13 +34,11 @@ function Profiles(): React.JSX.Element {
       },
       {
         name: '112%',
-        num_folders: 5,
         date_created: new Date('2026-04-03T18:47:00'),
         savestates: [[{}, {}], [{}], [{}, {}, {}], [{}, {}, {}, {}], [{}, {}]]
       },
       {
         name: 'Practice',
-        num_folders: 1,
         date_created: new Date('2026-05-01T11:00:00'),
         savestates: [[]]
       }
