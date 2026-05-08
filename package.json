@@ -1,5 +1,5 @@
 {
-  "name": "hk-savestate-editor",
+  "name": "savestate-architect",
   "version": "1.0.0",
   "description": "A save state editor for Hollow Knight and Silksong built with Electron and Vite.",
   "main": "./out/main/index.js",

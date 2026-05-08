@@ -1,4 +1,4 @@
-import { app, dialog, ipcMain } from 'electron'
+import { app, dialog, ipcMain, shell } from 'electron'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 
@@ -302,6 +302,17 @@ async function importCurrent(profileName: string): Promise<Profile> {
   return loadProfile(profileName)
 }
 
+async function openProfileFolder(profileName: string): Promise<void> {
+  console.log(`${LOG} openProfileFolder("${profileName}")`)
+  validateProfileName(profileName)
+  const dir = getProfileDir(profileName)
+  const errMsg = await shell.openPath(dir)
+  if (errMsg) {
+    console.error(`${LOG} openProfileFolder failed: ${errMsg}`)
+    throw new Error(errMsg)
+  }
+}
+
 async function deleteProfile(profileName: string): Promise<void> {
   console.log(`${LOG} deleteProfile("${profileName}")`)
   validateProfileName(profileName)
@@ -318,4 +329,5 @@ export function registerProfileIpc(): void {
   )
   ipcMain.handle('profiles:import-current', (_e, name: string) => importCurrent(name))
   ipcMain.handle('profiles:delete', (_e, name: string) => deleteProfile(name))
+  ipcMain.handle('profiles:open-folder', (_e, name: string) => openProfileFolder(name))
 }

@@ -1,5 +1,5 @@
 import { ProfileSummary } from '@renderer/lib/profile'
-import { listProfileSummaries } from '@renderer/lib/profile_management'
+import { listProfileSummaries, openProfileFolder } from '@renderer/lib/profile_management'
 import Button from '../components/Button'
 import ImportSavestates from '../views/ImportSavestates'
 import { useEffect, useState } from 'react'
@@ -51,12 +51,13 @@ function Profiles(): React.JSX.Element {
             <th className={headerCellClass}>Name</th>
             <th className={headerCellClass}>Folders</th>
             <th className={headerCellClass}>Savestates</th>
+            <th className={headerCellClass}></th>
           </tr>
         </thead>
         <tbody>
           {summaries.length === 0 ? (
             <tr>
-              <td className="text-center text-[var(--ev-c-text-2)] italic px-3.5 py-6" colSpan={3}>
+              <td className="text-center text-[var(--ev-c-text-2)] italic px-3.5 py-6" colSpan={4}>
                 No profiles yet.
               </td>
             </tr>
@@ -71,6 +72,17 @@ function Profiles(): React.JSX.Element {
                   <td className={rowCellClass}>{summary.name}</td>
                   <td className={rowCellClass}>{summary.numFolders}</td>
                   <td className={rowCellClass}>{summary.numSavestates}</td>
+                  <td className={rowCellClass}>
+                    <Button
+                      onClick={() => {
+                        openProfileFolder(summary.name).catch((err) =>
+                          setError(err instanceof Error ? err.message : String(err))
+                        )
+                      }}
+                    >
+                      Open Folder
+                    </Button>
+                  </td>
                 </tr>
               )
             })

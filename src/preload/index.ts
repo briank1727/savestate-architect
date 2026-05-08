@@ -9,7 +9,8 @@ const api = {
     importFromFolder: (name: string, folderPath: string) =>
       ipcRenderer.invoke('profiles:import-from-folder', name, folderPath),
     importCurrent: (name: string) => ipcRenderer.invoke('profiles:import-current', name),
-    delete: (name: string) => ipcRenderer.invoke('profiles:delete', name)
+    delete: (name: string) => ipcRenderer.invoke('profiles:delete', name),
+    openFolder: (name: string) => ipcRenderer.invoke('profiles:open-folder', name)
   }
 }
 

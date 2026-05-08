@@ -84,6 +84,17 @@ export async function importCurrentSavestates(profileName: string): Promise<Prof
   }
 }
 
+export async function openProfileFolder(profileName: string): Promise<void> {
+  console.log(`${LOG} openProfileFolder("${profileName}") called`)
+  try {
+    await window.api.profiles.openFolder(profileName)
+    console.log(`${LOG} openProfileFolder done`)
+  } catch (err) {
+    console.error(`${LOG} openProfileFolder error:`, err)
+    throw err
+  }
+}
+
 export async function deleteProfile(profileName: string): Promise<void> {
   console.log(`${LOG} deleteProfile("${profileName}") called`)
   try {
